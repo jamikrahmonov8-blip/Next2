@@ -1,0 +1,11 @@
+{
+  "Home": {
+    "small": "Next.js + i18n",
+    "title": "Modern Website",
+    "description": "Fully multilingual website built with Next.js and i18n.",
+    "button1": "Get Started",
+    "button2": "Learn More",
+    "cardTitle": "Fast Interface",
+    "cardDescription": "Tailwind + Next.js + next-intl."
+  }
+}
