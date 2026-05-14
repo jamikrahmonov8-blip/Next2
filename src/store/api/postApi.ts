@@ -6,7 +6,7 @@ export const studentApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "https://6941690a686bc3ca8166e0a9.mockapi.io/",
   }),
-  tagTypes: ["Students"], // Для автоматического обновления данных
+  tagTypes: ["Students"],   
   endpoints: (builder) => ({
     getStudents: builder.query<IStudentt[], void>({
       query: () => "/Students",

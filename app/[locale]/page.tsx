@@ -1,101 +1,219 @@
 "use client";
-import { useState } from "react";
-import { Button, Card, Avatar, Tag, Popconfirm, message } from "antd";
-import { EditOutlined, DeleteOutlined, PlusOutlined, EnvironmentOutlined } from "@ant-design/icons";
-import { 
-  useGetStudentsQuery, 
-  useAddStudentMutation, 
-  useDeleteStudentMutation, 
-  useUpdateStudentMutation 
-} from "../../src/store/api/postApi";
-import StudentModal from "../../components/StudentModal";
 
-export default function HomePage() {
-  const { data: students, isLoading } = useGetStudentsQuery();
-  const [addStudent, { isLoading: isAdding }] = useAddStudentMutation();
-  const [deleteStudent] = useDeleteStudentMutation();
-  const [updateStudent, { isLoading: isUpdating }] = useUpdateStudentMutation();
+import React, { useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+import axios from "axios";
 
-  const handleSave = async (formData: any) => {
-    try {
-      if (selectedStudent) {
-        await updateStudent({ ...formData, id: selectedStudent.id }).unwrap();
-        message.success("Данные обновлены");
-      } else {
-        await addStudent({ ...formData, img: formData.img || "https://joesch.moe/api/v1/random" }).unwrap();
-        message.success("Студент добавлен");
-      }
-      setIsModalOpen(false);
-    } catch (err) {
-      message.error("Произошла ошибка");
-    }
-  };
+import { Button, Input, Modal, Table } from "antd";
 
-  if (isLoading) return <div className="p-20 text-center text-xl">Загрузка...</div>;
+const HomePage = () => {
+  const api = "https://6941690a686bc3ca8166e0a9.mockapi.io/Students";
+
+  const queryClient = useQueryClient();
+
+  // ADD
+  const [openAdd, setOpenAdd] = useState(false);
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+
+  // EDIT
+  const [openEdit, setOpenEdit] = useState(false);
+
+  const [editId, setEditId] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
+  // GET
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["students"],
+
+    queryFn: async () => {
+      const { data } = await axios.get(api);
+
+      return data;
+    },
+  });
+
+  // DELETE
+  const { mutate: deleteStudent } = useMutation({
+    mutationFn: async (id: string) => {
+      await axios.delete(api + "/" + id);
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["students"],
+      });
+    },
+  });
+
+  // ADD
+  const { mutate: addStudent } = useMutation({
+    mutationFn: async () => {
+      await axios.post(api, {
+        fullName,
+        email,
+      });
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["students"],
+      });
+
+      setOpenAdd(false);
+
+      setFullName("");
+      setEmail("");
+    },
+  });
+
+  // EDIT
+  const { mutate: editStudent } = useMutation({
+    mutationFn: async () => {
+      await axios.put(api + "/" + editId, {
+        fullName: editName,
+        email: editEmail,
+      });
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["students"],
+      });
+
+      setOpenEdit(false);
+    },
+  });
+
+  // TABLE COLUMNS
+  const columns = [
+    {
+      title: "Full Name",
+      dataIndex: "fullName",
+      key: "fullName",
+    },
+
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+    },
+
+    {
+      title: "Actions",
+
+      render: (_: any, record: any) => (
+        <div className="flex gap-3">
+          <Button
+            danger
+            onClick={() => deleteStudent(record.id)}
+          >
+            Delete
+          </Button>
+
+          <Button
+            type="primary"
+            onClick={() => {
+              setOpenEdit(true);
+
+              setEditId(record.id);
+              setEditName(record.fullName);
+              setEditEmail(record.email);
+            }}
+          >
+            Edit
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <header className="flex justify-between items-center mb-10">
-        <h1 className="text-3xl font-bold italic tracking-tight">STUDENTS.IO</h1>
-        <Button 
-          type="primary" 
-          size="large" 
-          icon={<PlusOutlined />} 
-          onClick={() => { setSelectedStudent(null); setIsModalOpen(true); }}
-          shape="round"
+    <div className="max-w-[1200px] m-auto pt-[30px]">
+      {/* TOP */}
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-[35px] font-bold">
+          Students
+        </h1>
+
+        <Button
+          type="primary"
+          onClick={() => setOpenAdd(true)}
         >
           Add Student
         </Button>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {students?.map((student) => (
-          <Card
-            key={student.id}
-            hoverable
-            actions={[
-              <EditOutlined key="edit" onClick={() => { setSelectedStudent(student); setIsModalOpen(true); }} />,
-              <Popconfirm
-                title="Удалить студента?"
-                onConfirm={() => deleteStudent(student.id)}
-                okText="Да"
-                cancelText="Нет"
-              >
-                <DeleteOutlined key="delete" className="text-red-500" />
-              </Popconfirm>,
-            ]}
-          >
-            <Card.Meta
-              avatar={<Avatar src={student.img} size={64} shape="square" className="rounded-xl" />}
-              title={<span className="text-lg font-bold">{student.name}</span>}
-              description={
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1 text-zinc-400">
-                    <EnvironmentOutlined size={12} /> {student.location}
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <Tag color="blue">Age: {student.age}</Tag>
-                    <Tag color={student.status ? "green" : "red"}>
-                      {student.status ? "Active" : "Offline"}
-                    </Tag>
-                  </div>
-                </div>
-              }
-            />
-          </Card>
-        ))}
       </div>
 
-      <StudentModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSubmit={handleSave}
-        initialData={selectedStudent}
-        confirmLoading={isAdding || isUpdating}
+      {isFetching && <h1>FETCHING...</h1>}
+
+      {/* TABLE */}
+      <Table
+        loading={isLoading}
+        dataSource={data}
+        columns={columns}
+        rowKey="id"
       />
+
+      {/* ADD MODAL */}
+      <Modal
+        open={openAdd}
+        onCancel={() => setOpenAdd(false)}
+        onOk={() => addStudent()}
+        title="Add Student"
+      >
+        <div className="flex flex-col gap-4 mt-5">
+          <Input
+            placeholder="Full Name"
+            value={fullName}
+            onChange={(e) =>
+              setFullName(e.target.value)
+            }
+          />
+
+          <Input
+            placeholder="Email"
+            value={email}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
+          />
+        </div>
+      </Modal>
+
+      {/* EDIT MODAL */}
+      <Modal
+        open={openEdit}
+        onCancel={() => setOpenEdit(false)}
+        onOk={() => editStudent()}
+        title="Edit Student"
+      >
+        <div className="flex flex-col gap-4 mt-5">
+          <Input
+            placeholder="Full Name"
+            value={editName}
+            onChange={(e) =>
+              setEditName(e.target.value)
+            }
+          />
+
+          <Input
+            placeholder="Email"
+            value={editEmail}
+            onChange={(e) =>
+              setEditEmail(e.target.value)
+            }
+          />
+        </div>
+      </Modal>
     </div>
   );
-}
+};
+
+export default HomePage;

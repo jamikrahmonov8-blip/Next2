@@ -1,16 +1,17 @@
 "use client";
 
-import { Provider } from "react-redux";
-import { store } from "../store/store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-export default function StoreProvider({
+const queryClient = new QueryClient();
+
+export default function Providers({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <Provider store={store}>
+    <QueryClientProvider client={queryClient}>
       {children}
-    </Provider>
+    </QueryClientProvider>
   );
 }
